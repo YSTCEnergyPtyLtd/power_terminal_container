@@ -1,0 +1,53 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# ---- IDE / Editor ----
+.idea/
+.vscode/
+*.iml
+
+# ---- OS Files ----
+.DS_Store
+Thumbs.db
+
+# ---- Docker ----
+# Ignore local-only environment files or build artifacts
+docker-compose.override.yml
+*.pid
+*.tar
+*.bak
+*.swp
+
+# ---- Others ----
+# Local testing, cache, or coverage
+.coverage
+.cache/
+htmlcov/
+pytest_cache/
+
+# ---- Node (if front-end involved) ----
+node_modules/
