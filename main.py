@@ -1,16 +1,18 @@
-import asyncio, os, json, logging, threading
+import asyncio, os, json, logging, threading,uuid
 from datetime import datetime, timedelta
 import pytz
-from flask import Flask, request, render_template_string, jsonify
+from flask import Flask, request, render_template, jsonify
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, Float, JSON, Boolean
+from sqlalchemy.orm import declarative_base, sessionmaker
+from config import config
 
 # ===== 基本参数 =====
-AUS_TZ = pytz.timezone(os.getenv("TZ", "Australia/Melbourne"))
-DATA_DIR = os.getenv("DATA_DIR", "/app/data")
-LOG_DIR  = os.getenv("LOG_DIR", "/app/logs")
+# 修改为从config中读取
+AUS_TZ = pytz.timezone(config.TZ)
+DATA_DIR = config.DATA_DIR
+LOG_DIR = config.LOG_DIR
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
-
-USER_FILE = os.path.join(DATA_DIR, "user_info.json")
 
 # ===== 日志 =====
 logging.basicConfig(
@@ -29,11 +31,58 @@ STATE = {
     "web_started": False,
     "loop_started": False,
     "user_file_seen": False,
+    "db_status": "disconnected",  # 新添加一个数据库连接状态
     "last_cycle_start": None,
     "last_cycle_end": None,
     "next_quarter_wait_sec": None,
     "last_error": None,
 }
+
+# ===== 数据库核心配置（ORM模型+连接）=====
+# 模型基类（所有数据库表模型继承此类）
+Base = declarative_base()
+class YstcUser(Base):
+    __tablename__ = "ystc_user"  # 数据库表名
+    id = Column(Integer, primary_key=True, autoincrement=True)  # 主键（自增，数据库自动生成）
+    username = Column(String(50), unique=True, nullable=False)  # 用户名（唯一标识，用户输入）
+    password_hash = Column(String(128), nullable=False)  # 密码哈希（需加密存储）
+    name = Column(String(50), nullable=False)  # 姓名（用户输入）
+    phone = Column(String(20), nullable=False)  # 手机号（用户输入）
+    email = Column(String(100), nullable=False)  # 邮箱（用户输入）
+    address = Column(String(200), nullable=False)  # 地址（用户输入）
+    powerline_info = Column(String(200), nullable=True)  # 可选字段
+    is_active = Column(Boolean, default=True, nullable=True)  # 默认激活
+    last_login = Column(DateTime, nullable=True)  # 最后登录时间
+    create_by = Column(String(50), default="system", nullable=True)  # 创建人
+    create_time = Column(DateTime, default=lambda: datetime.now(AUS_TZ), nullable=True)  # 创建时间
+    update_by = Column(String(50), nullable=True)  # 更新人
+    update_time = Column(DateTime, nullable=True)  # 更新时间
+
+# 数据库连接引擎（从config读取连接信息）
+engine = create_engine(
+    config.SQLALCHEMY_DATABASE_URI,
+    pool_size=20,  # 连接池大小（支持多并发）
+    max_overflow=30,  # 最大溢出连接数
+    pool_pre_ping=True  # 自动检测无效连接，避免连接失效
+)
+# 数据库会话工厂（每次操作数据库都通过会话）
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 数据库表初始化（首次运行自动创建表，已存在则无操作）
+def init_db():
+    try:
+        Base.metadata.create_all(bind=engine)  # 创建所有模型对应的表
+        log.info("数据库表初始化完成（若已存在则跳过）")
+        # 测试数据库连接
+        db = SessionLocal()
+        db.query(YstcUser).first()  # 执行简单查询
+        db.close()
+        STATE["db_status"] = "connected"
+        log.info("数据库连接成功")
+    except Exception as e:
+        STATE["db_status"] = f"disconnected: {str(e)}"
+        log.error(f"数据库初始化/连接失败：{str(e)}")
+
 
 # ===== 核心任务（模拟）=====
 async def read_meter_data():
@@ -87,83 +136,90 @@ async def run_cycle():
     log.info(f"=== 周期结束：{datetime.now(AUS_TZ).strftime('%H:%M:%S')} ===\n")
     STATE["last_cycle_end"] = datetime.now(AUS_TZ).isoformat()
 
-# ===== Flask 页面 =====
-FORM_HTML = """
-<!doctype html>
-<title>Power Terminal 注册</title>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<div style="max-width:520px;margin:32px auto;font-family:system-ui">
-  <h2>站点注册</h2>
-  <form method="post">
-    <label>姓名</label><br><input name="name" required style="width:100%;padding:8px"><br><br>
-    <label>用户ID</label><br><input name="user_id" required style="width:100%;padding:8px"><br><br>
-    <label>手机号</label><br><input name="phone" required style="width:100%;padding:8px"><br><br>
-    <label>Email</label><br><input type="email" name="email" required style="width:100%;padding:8px"><br><br>
-    <label>地址</label><br><input name="addr" required style="width:100%;padding:8px"><br><br>
-    <button style="padding:10px 16px">提交并启动</button>
-  </form>
-  <p style="margin-top:24px"><a href="/health">查看健康状态</a></p>
-</div>
-"""
-
-REGISTERED_HTML = """
-<!doctype html>
-<title>Power Terminal 已注册</title>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<div style="max-width:520px;margin:32px auto;font-family:system-ui;text-align:center">
-  <h2>✅ 已注册</h2>
-  <p>此设备已完成注册并正在运行。</p>
-  <form action="/reset" method="post">
-    <button style="padding:10px 16px;background:#f44336;color:white;border:none;border-radius:6px">重置注册信息</button>
-  </form>
-  <p style="margin-top:24px"><a href="/health">查看健康状态</a></p>
-</div>
-"""
-
-RESET_HTML = """
-<!doctype html>
-<title>Power Terminal 重置成功</title>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<div style="max-width:520px;margin:32px auto;font-family:system-ui;text-align:center">
-  <h2>🔄 注册信息已清除</h2>
-  <p>请 <a href="/">点击此处重新注册</a></p>
-  <p style="margin-top:24px"><a href="/health">查看健康状态</a></p>
-</div>
-"""
-
 app = Flask(__name__)
 
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         data = {
-            "name": request.form.get("name","").strip(),
-            "user_id": request.form.get("user_id","").strip(),
-            "phone": request.form.get("phone","").strip(),
-            "email": request.form.get("email","").strip(),
-            "addr": request.form.get("addr","").strip(),
+            "username": request.form.get("username", "").strip(),
+            "name": request.form.get("name", "").strip(),
+            "phone": request.form.get("phone", "").strip(),
+            "email": request.form.get("email", "").strip(),
+            "addr": request.form.get("addr", "").strip(),
         }
         if not all(data.values()):
-            return render_template_string(FORM_HTML)
-        with open(USER_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        log.info(f"注册完成，写入 {USER_FILE}：{data}")
-        return "注册成功！容器将进入15分钟整刻循环。可关闭此页面。"
-    if os.path.exists(USER_FILE):
-        return render_template_string(REGISTERED_HTML)
-    return render_template_string(FORM_HTML)
+            return render_template("form.html")
 
-@app.route("/reset", methods=["POST"])
-def reset_registration():
-    if os.path.exists(USER_FILE):
-        os.remove(USER_FILE)
-        log.info("用户请求：注册信息已重置。")
-    return render_template_string(RESET_HTML)
+        db = SessionLocal()
+        try:
+            # 校验用户名唯一性
+            existing_user = db.query(YstcUser).filter(YstcUser.username == data["username"]).first()
+            if existing_user:
+                return "用户名已存在，请更换后重试！"
+
+            # 构造用户数据（密码哈希需后续添加，此处示例省略）
+            user_data = {
+                "username": data["username"],
+                "name": data["name"],
+                "phone": data["phone"],
+                "email": data["email"],
+                "address": data["addr"],
+                "password_hash": "默认哈希（需替换为真实加密逻辑）",  # 示例：实际需用bcrypt等加密
+            }
+            new_user = YstcUser(**user_data)
+            db.add(new_user)
+            db.commit()
+            log.info(f"注册完成，用户ID（id）：{new_user.id}，用户名：{data['username']}")
+            return "注册成功！系统将进入15分钟整刻循环。可关闭此页面。"
+        except Exception as e:
+            db.rollback()
+            log.error(f"注册失败：{str(e)}")
+            return f"注册失败：{str(e)}"
+        finally:
+            db.close()
+
+    db = SessionLocal()
+    has_user = db.query(YstcUser).first() is not None
+    db.close()
+    if has_user:
+        return render_template("registered.html")
+    return render_template("form.html")
+
+# 修改
+# @app.route("/reset", methods=["POST"])
+# def reset_registration():
+#     db = SessionLocal()
+#     try:
+#         # 清空用户表所有记录
+#         db.query(YstcUser).delete()
+#         db.commit()
+#         log.info("用户注册信息已重置（数据库用户表清空）")
+#         return render_template("reset.html")
+#     except Exception as e:
+#         db.rollback()
+#         log.error(f"重置失败：{str(e)}")
+#         return f"重置失败：{str(e)}"
+#     finally:
+#         db.close()
+
 
 @app.route("/health")
 def health():
-    # 实时刷新 user_file 是否存在
-    STATE["user_file_seen"] = os.path.exists(USER_FILE)
+    # 实时更新数据库连接状态
+    try:
+        db = SessionLocal()
+        db.query(YstcUser).first()
+        db.close()
+        STATE["db_status"] = "connected"
+    except Exception as e:
+        STATE["db_status"] = f"disconnected: {str(e)}"
+
+    # 实时检测是否已注册（数据库查询）
+    db = SessionLocal()
+    STATE["user_file_seen"] = db.query(YstcUser).first() is not None
+    db.close()
+
     return jsonify(STATE)
 
 # ===== 后台异步循环 =====
@@ -171,13 +227,19 @@ async def service_loop():
     try:
         STATE["loop_started"] = True
         log.info("系统（调控循环）启动")
-        # 等待注册文件出现
-        while not os.path.exists(USER_FILE):
+
+        # 从数据库查询
+        db = SessionLocal()
+        while not db.query(YstcUser).first():
+            db.close()
             STATE["user_file_seen"] = False
             await asyncio.sleep(1)
+            db = SessionLocal()
+        db.close()
         STATE["user_file_seen"] = True
+        log.info("检测到已注册用户，启动15分钟整刻循环")
 
-        # 进入 15 分钟整刻循环
+        # 进入15分钟循环
         while True:
             await align_to_next_quarter()
             await run_cycle()
@@ -192,6 +254,7 @@ def start_web_server():
     app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False, threaded=True)
 
 def main():
+    init_db()
     STATE["booted"] = True
     log.info("BOOT: 进程启动，准备启动 Web 与后台循环")
     web_thread = threading.Thread(target=start_web_server, daemon=True)
