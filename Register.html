@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouringBank - 用户注册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- 顶部导航栏 -->
+    <div class="px-8 py-3 flex items-center bg-gray-900">
+        <div class="flex items-center">
+            <a href="index.html" class="text-white font-bold text-xl">TouringBank</a>
+            <span class="text-blue-400 text-sm ml-2">BETA</span>
+        </div>
+
+        <div class="ml-8 flex space-x-6">
+            <a href="index.html" class="text-gray-400 text-sm cursor-pointer hover:text-white transition-colors">首页</a>
+            <div class="text-gray-400 text-sm cursor-pointer">我的清单</div>
+            <div class="text-gray-400 text-sm cursor-pointer">数据中心</div>
+        </div>
+
+        <div class="ml-auto flex items-center">
+            <a href="Login.html"
+                class="text-gray-400 hover:text-white text-sm flex items-center transition-colors mr-4">
+                <i class="fas fa-sign-in-alt mr-2"></i>登录
+            </a>
+        </div>
+    </div>
+
+    <!-- 注册区域 -->
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full">
+            <!-- 注册卡片 -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <!-- Logo和标题 -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+                        <i class="fas fa-user-plus text-white text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900">创建账户</h2>
+                    <p class="text-sm text-gray-600 mt-2">加入 TouringBank 社区</p>
+                </div>
+
+                <!-- 注册表单 -->
+                <form id="registerForm" class="space-y-6">
+                    <!-- 邮箱 -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                            邮箱地址
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-envelope text-gray-400"></i>
+                            </div>
+                            <input id="email" name="email" type="email" required
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="your@email.com">
+                        </div>
+                    </div>
+
+                    <!-- 密码 -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            密码
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input id="password" name="password" type="password" required
+                                class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="至少6位字符">
+                            <button type="button" id="togglePassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">密码长度至少为6位</p>
+                    </div>
+
+                    <!-- 确认密码 -->
+                    <div>
+                        <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">
+                            确认密码
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input id="confirmPassword" name="confirmPassword" type="password" required
+                                class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="再次输入密码">
+                            <button type="button" id="toggleConfirmPassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 同意条款 -->
+                    <div class="flex items-start">
+                        <input id="agree-terms" name="agree-terms" type="checkbox" required
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer mt-1">
+                        <label for="agree-terms" class="ml-2 block text-sm text-gray-700 cursor-pointer">
+                            我同意 <a href="#" class="text-blue-600 hover:text-blue-500">服务条款</a> 和
+                            <a href="#" class="text-blue-600 hover:text-blue-500">隐私政策</a>
+                        </label>
+                    </div>
+
+                    <!-- 注册按钮 -->
+                    <div>
+                        <button type="submit" id="registerBtn"
+                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            注册
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 登录链接 -->
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600">
+                        已有账户？
+                        <a href="Login.html" class="font-medium text-blue-600 hover:text-blue-500">
+                            立即登录
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase配置 -->
+    <script src="js/firebase-config.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        // 密码显示/隐藏切换
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+
+        togglePassword.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.querySelector('i').classList.toggle('fa-eye');
+            this.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+
+        toggleConfirmPassword.addEventListener('click', function () {
+            const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            confirmPasswordInput.setAttribute('type', type);
+            this.querySelector('i').classList.toggle('fa-eye');
+            this.querySelector('i').classList.toggle('fa-eye-slash');
+        });
+
+        // 注册表单处理
+        const registerForm = document.getElementById('registerForm');
+        const registerBtn = document.getElementById('registerBtn');
+
+        registerForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const agreeTerms = document.getElementById('agree-terms').checked;
+
+            // 验证
+            if (!agreeTerms) {
+                alert('请同意服务条款和隐私政策');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('密码长度至少为6位');
+                return;
+            }
+
+            // 禁用按钮，显示加载状态
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>注册中...';
+
+            try {
+                // 使用Firebase注册
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                console.log('注册成功:', user);
+
+                // 发送验证邮件
+                try {
+                    await user.sendEmailVerification();
+                    alert('注册成功！验证邮件已发送，请查收邮箱。');
+                } catch (emailError) {
+                    console.error('发送验证邮件失败:', emailError);
+                    alert('注册成功！但验证邮件发送失败，您仍可以登录。');
+                }
+
+                // 跳转到登录页
+                window.location.href = 'Login.html';
+
+            } catch (error) {
+                console.error('注册失败:', error);
+
+                // 恢复按钮状态
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i class="fas fa-user-plus mr-2"></i>注册';
+
+                let errorMessage = '注册失败，请重试';
+
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMessage = '该邮箱已被注册，请直接登录';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = '邮箱格式不正确';
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage = '密码强度太弱，请使用更复杂的密码';
+                        break;
+                    case 'auth/operation-not-allowed':
+                        errorMessage = '邮箱注册功能未启用，请联系管理员';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage = '网络连接失败，请检查网络';
+                        break;
+                }
+
+                alert(errorMessage);
+            }
+        });
+    </script>
+
+</body>
+
+</html>

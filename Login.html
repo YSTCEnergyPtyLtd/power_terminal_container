@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouringBank - 用户登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- 顶部导航栏 -->
+    <div class="px-8 py-3 flex items-center bg-gray-900">
+        <div class="flex items-center">
+            <a href="index.html" class="text-white font-bold text-xl">TouringBank</a>
+            <span class="text-blue-400 text-sm ml-2">BETA</span>
+        </div>
+
+        <div class="ml-8 flex space-x-6">
+            <a href="index.html" class="text-gray-400 text-sm cursor-pointer hover:text-white transition-colors">首页</a>
+            <div class="text-gray-400 text-sm cursor-pointer">我的清单</div>
+            <div class="text-gray-400 text-sm cursor-pointer">数据中心</div>
+        </div>
+
+        <div class="ml-auto flex items-center">
+            <a href="Login.html" class="text-white opacity-90 text-sm flex items-center transition-colors">
+                <i class="fas fa-user mr-2"></i>登录
+            </a>
+        </div>
+    </div>
+
+    <!-- 登录区域 -->
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full">
+            <!-- 登录卡片 -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <!-- Logo和标题 -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+                        <i class="fas fa-music text-white text-2xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900">欢迎回来</h2>
+                    <p class="text-sm text-gray-600 mt-2">登录您的 TouringBank 账户</p>
+                </div>
+
+                <!-- 登录表单 -->
+                <form id="loginForm" class="space-y-6">
+                    <!-- 邮箱 -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                            邮箱
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-envelope text-gray-400"></i>
+                            </div>
+                            <input id="email" name="email" type="email" required
+                                class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="输入您的邮箱">
+                        </div>
+                    </div>
+
+                    <!-- 密码 -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            密码
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-lock text-gray-400"></i>
+                            </div>
+                            <input id="password" name="password" type="password" required
+                                class="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="输入您的密码">
+                            <button type="button" id="togglePassword"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 记住我和忘记密码 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input id="remember-me" name="remember-me" type="checkbox"
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-700 cursor-pointer">
+                                记住我
+                            </label>
+                        </div>
+
+                        <div class="text-sm">
+                            <a href="#" id="forgotPasswordLink" class="font-medium text-blue-600 hover:text-blue-500">
+                                忘记密码?
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 登录按钮 -->
+                    <div>
+                        <button type="submit" id="loginBtn"
+                            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            登录
+                        </button>
+                    </div>
+
+                    <!-- 分隔线 -->
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-white text-gray-500">或使用以下方式登录</span>
+                        </div>
+                    </div>
+
+                    <!-- 第三方登录 -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" id="googleLoginBtn"
+                            class="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            <i class="fab fa-google text-red-500 mr-2"></i>
+                            Google
+                        </button>
+                        <button type="button" id="githubLoginBtn"
+                            class="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                            <i class="fab fa-github mr-2"></i>
+                            GitHub
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 注册链接 -->
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-600">
+                        还没有账户？
+                        <a href="Register.html" class="font-medium text-blue-600 hover:text-blue-500">
+                            立即注册
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 底部提示 -->
+            <div class="mt-8 text-center">
+                <p class="text-xs text-gray-500">
+                    登录即表示您同意我们的
+                    <a href="#" class="text-blue-600 hover:text-blue-500">服务条款</a>
+                    和
+                    <a href="#" class="text-blue-600 hover:text-blue-500">隐私政策</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase配置 -->
+    <script src="js/firebase-config.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        // 密码显示/隐藏切换
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+
+        togglePassword.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            // 切换图标
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+
+        // 邮箱密码登录
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+
+            // 禁用按钮，显示加载状态
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>登录中...';
+
+            try {
+                // 设置持久化方式
+                if (rememberMe) {
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                } else {
+                    await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+                }
+
+                // 使用Firebase登录
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                console.log('登录成功:', user);
+
+                // 登录成功，跳转到首页
+                alert('登录成功！');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('登录失败:', error);
+
+                // 恢复按钮状态
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>登录';
+
+                // 错误处理
+                let errorMessage = '登录失败，请重试';
+
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMessage = '用户不存在，请先注册';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage = '密码错误，请重试';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = '邮箱格式不正确';
+                        break;
+                    case 'auth/user-disabled':
+                        errorMessage = '该账户已被禁用';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = '登录尝试次数过多，请稍后再试';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage = '网络连接失败，请检查网络';
+                        break;
+                }
+
+                alert(errorMessage);
+            }
+        });
+
+        // Google登录
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
+        googleLoginBtn.addEventListener('click', async function () {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
+
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+
+                console.log('Google登录成功:', user);
+                alert('登录成功！');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('Google登录失败:', error);
+
+                let errorMessage = 'Google登录失败';
+                if (error.code === 'auth/popup-closed-by-user') {
+                    errorMessage = '登录窗口已关闭';
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    errorMessage = '登录已取消';
+                }
+
+                alert(errorMessage);
+            }
+        });
+
+        // GitHub登录
+        const githubLoginBtn = document.getElementById('githubLoginBtn');
+        githubLoginBtn.addEventListener('click', async function () {
+            const provider = new firebase.auth.GithubAuthProvider();
+
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+
+                console.log('GitHub登录成功:', user);
+                alert('登录成功！');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('GitHub登录失败:', error);
+
+                let errorMessage = 'GitHub登录失败';
+                if (error.code === 'auth/popup-closed-by-user') {
+                    errorMessage = '登录窗口已关闭';
+                } else if (error.code === 'auth/account-exists-with-different-credential') {
+                    errorMessage = '该邮箱已使用其他方式注册';
+                }
+
+                alert(errorMessage);
+            }
+        });
+
+        // 忘记密码
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        forgotPasswordLink.addEventListener('click', async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+
+            if (!email) {
+                alert('请先输入您的邮箱地址');
+                return;
+            }
+
+            try {
+                await auth.sendPasswordResetEmail(email);
+                alert('密码重置邮件已发送，请查收邮箱');
+            } catch (error) {
+                console.error('发送失败:', error);
+
+                let errorMessage = '发送失败';
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = '该邮箱未注册';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = '邮箱格式不正确';
+                }
+
+                alert(errorMessage);
+            }
+        });
+    </script>
+
+</body>
+
+</html>
