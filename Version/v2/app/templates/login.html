@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备登录</title>
+    <style>
+        .container { max-width: 400px; margin: 80px auto; padding: 0 20px; font-family: system-ui; }
+        form { margin-top: 20px; display: none; } /* 默认隐藏登录表单 */
+        label { display: block; margin: 15px 0 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { width: 100%; padding: 12px; margin-top: 20px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .error { color: #dc3545; margin-top: 10px; }
+        .link { margin-top: 20px; text-align: center; }
+        a { color: #007bff; text-decoration: none; }
+        .loading { text-align: center; margin-top: 20px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">正在验证登录状态...</div>
+        <form id="loginForm">
+            <h2>设备登录</h2>
+            <label>用户名</label>
+            <input type="text" name="username" required placeholder="请输入用户名">
+
+            <label>密码</label>
+            <input type="password" name="password" required placeholder="请输入密码">
+
+            <button type="submit" class="btn">登录</button>
+            <div id="msg" class="error"></div>
+            <div class="link">没有账号？<a href="/register">点击注册</a></div>
+        </form>
+    </div>
+
+    <script>
+        // 页面加载后立即校验Token
+        window.onload = async function() {
+            const loading = document.getElementById('loading');
+            const loginForm = document.getElementById('loginForm');
+            const msg = document.getElementById('msg');
+
+            // 1. 从localStorage获取Token
+            const token = localStorage.getItem('access_token');
+
+            // 2. 有Token则校验有效性
+            if (token) {
+                try {
+                    const res = await fetch('/api/device/verify_token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ access_token: token })
+                    });
+                    const data = await res.json();
+
+                    // 3. Token有效 → 直接跳仪表盘
+                    if (data.code === 200) {
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    // 4. Token无效 → 清除并显示登录表单
+                    else {
+                        localStorage.removeItem('access_token');
+                        loading.style.display = 'none';
+                        loginForm.style.display = 'block';
+                    }
+                } catch (err) {
+                    // 网络异常 → 显示登录表单
+                    loading.style.display = 'none';
+                    loginForm.style.display = 'block';
+                    console.error('校验Token失败：', err);
+                }
+            }
+            // 5. 无Token → 显示登录表单
+            else {
+                loading.style.display = 'none';
+                loginForm.style.display = 'block';
+            }
+
+            // 6. 登录表单提交逻辑
+            loginForm.onsubmit = async function(e) {
+                e.preventDefault();
+                msg.textContent = '';
+
+                const username = this.username.value.trim();
+                const password = this.password.value.trim();
+
+                try {
+                    const res = await fetch('/api/device/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    const data = await res.json();
+
+                    if (data.code === 200) {
+                        // 登录成功 → 存储Token到localStorage（核心！）
+                        localStorage.setItem('access_token', data.access_token);
+                        // 跳仪表盘
+                        window.location.href = data.redirect;
+                    } else {
+                        msg.textContent = data.msg || '账号或密码错误';
+                    }
+                } catch (err) {
+                    msg.textContent = '网络异常，请重试';
+                }
+            };
+        };
+    </script>
+</body>
+</html>

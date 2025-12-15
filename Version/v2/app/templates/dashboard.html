@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备仪表盘</title>
+    <style>
+        .container { max-width: 520px; margin: 40px auto; padding: 0 20px; font-family: system-ui; text-align: center; }
+        .status-card { margin: 20px 0; padding: 20px; border-radius: 8px; background: #f8f9fa; text-align: left; }
+        .status-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .btn-logout { padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>✅ 设备已登录</h2>
+        <p>当前账号：{{ username }}</p>
+        <p>设备序列号：{{ serial_number }}</p>
+
+        <div class="status-card">
+            <div class="status-item">
+                <span>设备状态</span>
+                <span>在线</span>
+            </div>
+            <div class="status-item">
+                <span>当前周期</span>
+                <span id="currentCycle">加载中...</span>
+            </div>
+        </div>
+
+        <button id="logoutBtn" class="btn-logout">退出登录</button>
+    </div>
+
+    <script>
+        // 等待DOM完全加载
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 1. 先校验Token（防止手动访问仪表盘）
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/device/verify_token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_token: token })
+                });
+                const data = await res.json();
+                if (data.code !== 200) {
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login';
+                    return;
+                }
+            } catch (err) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // 2. 获取当前周期
+            async function getCurrentCycle() {
+                try {
+                    const res = await fetch('/api/device/current_cycle', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await res.json();
+                    if (data.code === 200) {
+                        document.getElementById('currentCycle').textContent = data.current_cycle;
+                    } else {
+                        document.getElementById('currentCycle').textContent = '获取失败';
+                    }
+                } catch (err) {
+                    document.getElementById('currentCycle').textContent = '获取失败';
+                }
+            }
+
+            // 3. 退出登录逻辑
+            document.getElementById('logoutBtn').onclick = async function() {
+                try {
+                    const res = await fetch('/api/device/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await res.json();
+                    if (data.code === 200) {
+                        // 清除localStorage的Token
+                        localStorage.removeItem('access_token');
+                        window.location.href = '/login';
+                    } else {
+                        alert(data.msg || '退出失败');
+                    }
+                } catch (err) {
+                    alert('退出失败，请重试');
+                }
+            };
+
+            // 4. 初始化获取周期
+            getCurrentCycle();
+        });
+    </script>
+</body>
+</html>
