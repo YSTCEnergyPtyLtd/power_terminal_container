@@ -132,14 +132,18 @@ async def get_cloud_strategy(predicted_power):
                     upload_json = await upload_resp.json()
                     if upload_resp.status != 200:
                         error_msg = upload_json.get("msg", "") or upload_json.get("error", "未知错误")
+                        if upload_resp.status == 409:
+                            raise Exception(f"设备已上传过数据| {error_msg}")
                         raise Exception(f"上传失败 | {error_msg}")
-
                 log.info(f"设备 {DEVICE_BASE_INFO['serial_number']} 在周期 {latest_cycle} 数据上传成功！")
                 return latest_cycle
 
             except Exception as e:
+                if "已上传过数据" in str(e):
+                    log.info(f"设备 {DEVICE_BASE_INFO['serial_number']} 已在周期上传过数据，终止重试")
+                    return latest_cycle
                 if _upload_retry < API_CONFIG["upload_retry_times"]:
-                    log.warning(f"⚠️ 上传异常，重试第 {_upload_retry + 1} 次: {str(e)}")
+                    log.warning(f"上传异常，重试第 {_upload_retry + 1} 次: {str(e)}")
                     await asyncio.sleep(API_CONFIG["upload_retry_delay"])
                     return await _check_cycle_and_upload(_upload_retry + 1)
                 else:
@@ -154,14 +158,14 @@ async def get_cloud_strategy(predicted_power):
                 ) as strategy_resp:
                     if strategy_resp.status == 200:
                         strategy_data = await strategy_resp.json()
-                        log.info(f"✅ 获取设备 {DEVICE_BASE_INFO['serial_number']} 云端策略成功！")
+                        log.info(f"获取设备 {DEVICE_BASE_INFO['serial_number']} 云端策略成功！")
                         return strategy_data.get("data", {})
                     else:
                         raise Exception(f"策略查询失败 | 状态码：{strategy_resp.status}")
 
             except Exception as e:
                 if _strategy_retry < API_CONFIG["strategy_retry_times"]:
-                    log.warning(f"⚠️ 策略查询异常，重试第 {_strategy_retry + 1} 次: {str(e)}")
+                    log.warning(f"策略查询异常，重试第 {_strategy_retry + 1} 次: {str(e)}")
                     await asyncio.sleep(API_CONFIG["strategy_retry_delay"])
                     return await _query_strategy(cycle_time, _strategy_retry + 1)
                 else:
@@ -214,13 +218,14 @@ async def get_cloud_strategy(predicted_power):
             return strategy
 
         except Exception as e:
-            log.error(f"❌ 云端策略获取流程失败：{str(e)}。切换至本地兜底策略。")
+            log.error(f"云端策略获取流程失败：{str(e)}。切换至本地兜底策略。")
             fallback_strategy = {
                 "action": "DISCHARGE" if predicted_power > FALLBACK_STRATEGY_RULE["threshold_power"] else "CHARGE",
                 "power_kw": FALLBACK_STRATEGY_RULE["discharge_power"] if predicted_power > FALLBACK_STRATEGY_RULE[
                     "threshold_power"] else FALLBACK_STRATEGY_RULE["charge_power"]
             }
             return fallback_strategy
+
 async def control_battery(strategy):
     log.info(f"执行策略：{strategy['action']}，功率 {strategy['power_kw']} kW")
     await asyncio.sleep(1)
