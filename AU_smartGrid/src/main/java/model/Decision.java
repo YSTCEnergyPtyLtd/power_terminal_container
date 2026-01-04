@@ -5,11 +5,7 @@ public class Decision {
     private double[] speed = new double[ConstNum.timeSlots];
     private double[] cost = new double[ConstNum.timeSlots];
     private double benefit = 0.0;
-    //修改
-    private int deviceId;
-    public int getDeviceId() { return deviceId; }
-    public void setDeviceId(int deviceId) { this.deviceId = deviceId; }
-
+  
     public int[] getDc() {
         return dc;
     }
